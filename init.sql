@@ -1,0 +1,25 @@
+CREATE TABLE IF NOT EXISTS users ( 
+  id INTEGER PRIMARY KEY AUTOINCREMENT, 
+  first_name CHAR(20), 
+  last_name CHAR(50), 
+  whatsapp INTEGER, 
+  active BOOLEAN, 
+  created_at TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS messages (
+  id INTEGER PRIMARY KEY AUTOINCREMENT, 
+  user_id INTEGER,
+  role VARCHAR(10) NOT NULL CHECK (role IN ('user', 'assistant')),
+  message CHAR(100),
+  created_at TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS workout_sets (
+  id INTEGER PRIMARY KEY AUTOINCREMENT, 
+  user_id INTEGER,
+  exercise CHAR(100),
+  weight INTEGER,
+  reps INTEGER,
+  created_at TIMESTAMP
+);
