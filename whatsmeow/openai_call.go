@@ -272,18 +272,16 @@ sets, each set has its own reps and weight.`),
 		panic(err.Error())
 	}
 	InsertOverallState(db, state)
+	state.Messages = append(state.Messages, Message{Role: "assistant", Content: "workout saved"})
 }
 
-func LLMRouteInput(state *OverallState, db *sql.DB) string {
-	if state.Messages[len(state.Messages)-1] == "<WO>" {
+func LLMRouteInput(state *OverallState, db *sql.DB) {
+	if state.Messages[len(state.Messages)-1].Content == "<WO>" {
 		LLMStructuredOutputSets(state, db)
-		return "workout saved"
 	} 
-	if state.Messages[len(state.Messages)-1] == "<Q>" {
+	if state.Messages[len(state.Messages)-1].Content == "<Q>" {
 		LLMQueryData(db, state)
-		return string(state.Messages[len(state.Messages)-1])
 	}
-	return string(state.Messages[len(state.Messages)-1])
 }
 
 func createDatabase(dbName, initSQLPath string) (*sql.DB, error) {
@@ -335,7 +333,7 @@ func InsertOverallState(db *sql.DB, state *OverallState) error {
 		_, err := tx.Exec(`
 			INSERT INTO messages (user_id, role, message, created_at)
 			VALUES (?, ?, ?, ?);
-		`, state.UserID, "user", msg, time.Now())
+		`, state.UserID, msg.Role, msg.Content, time.Now())
 		if err != nil {
 			return fmt.Errorf("failed to insert message: %w", err)
 		}
