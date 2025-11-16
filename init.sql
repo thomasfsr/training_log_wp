@@ -12,7 +12,7 @@ CREATE TABLE IF NOT EXISTS messages (
   user_id INTEGER,
   role VARCHAR(10) NOT NULL CHECK (role IN ('user', 'assistant')),
   message CHAR(100),
-  created_at TIMESTAMP
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE TABLE IF NOT EXISTS workout_sets (

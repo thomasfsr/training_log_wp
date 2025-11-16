@@ -113,8 +113,8 @@ func LLMEntryPoint(db *sql.DB, user_input string, user_id uint64) *OverallState 
 		UserID: int(user_id),
 		UserInput: user_input,
 		Messages: []Message{
-			Message{Role: "user", Content: user_input},
-			Message{Role: "assistant", Content: *chat_response_content},
+			{Role: "user", Content: user_input},
+			{Role: "assistant", Content: *chat_response_content},
 		},
 	}
 }
@@ -168,11 +168,11 @@ CRITICAL: Return ONLY the SQL query, no markdown formatting, no code blocks, no 
 	}
 	defer tx.Rollback() 
 	rows, err := tx.Query(cleanedSQL)
-	defer rows.Close()
 	if err != nil {
 		fmt.Printf("LLM Error: %v", err.Error())
 		return
 	}
+	defer rows.Close()
 	columns, err := rows.Columns()
 	if err != nil {
 		fmt.Printf("LLM Error: %v", err.Error())
