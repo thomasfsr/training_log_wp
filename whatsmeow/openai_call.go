@@ -335,7 +335,7 @@ func InsertOverallState(db *sql.DB, state *OverallState) error {
 			_, err := tx.Exec(`
 				INSERT INTO workout_sets (user_id, exercise, weight, reps)
 				VALUES (?, ?, ?, ?);
-				`, state.UserID, exercise_name, set.Weight, set.NReps, time.Now())
+				`, state.UserID, exercise_name, set.Weight, set.NReps)
 			if err != nil {
 				return fmt.Errorf("failed to insert workout: %w", err)
 			}

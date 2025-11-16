@@ -79,6 +79,10 @@ func eventHandler(client *whatsmeow.Client, db *sql.DB) func(any) {
 					return
 					}
 				}
+			if err := tx.Commit(); err != nil {
+				fmt.Printf("failed to commit transaction: %v", err.Error())
+    		return
+			}
 			response := state.Messages[len(state.Messages)-1].Content
 			if message != "" {
 				userJID := types.JID{
