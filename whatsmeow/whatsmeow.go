@@ -9,6 +9,7 @@ import (
 	"os/signal"
 	"syscall"
 	"strconv"
+	"time"
 
 	"go.mau.fi/whatsmeow"
 	"go.mau.fi/whatsmeow/proto/waE2E"
@@ -59,7 +60,25 @@ func eventHandler(client *whatsmeow.Client, db *sql.DB) func(any) {
 			fmt.Println("Device is: \n", device)
 
 			state := LLMEntryPoint(db, message, deviceID)
-			response := LLMRouteInput(state, db)
+			LLMRouteInput(state, db)
+
+			tx, err := db.Begin()
+			if err != nil {
+				fmt.Printf(err.Error())
+				return
+			}
+			defer tx.Rollback()
+
+			for _, msg := range state.Messages {
+					_, err := tx.Exec(`
+					INSERT INTO messages (user_id, role, message, created_at)
+					VALUES (?, ?, ?, ?);`,
+					state.UserID, msg.Role, msg.Content, time.Now())
+				if err != nil {
+					fmt.Errorf("failed to insert message: %w", err)
+					return
+					}
+				}
 			if message != "" {
 
 				userJID := types.JID{
