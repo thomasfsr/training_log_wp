@@ -24,7 +24,7 @@ type ExerciseSet struct {
 
 type Message struct {
 	Role string
-	Message string
+	Content string
 }
 
 type OverallState struct {

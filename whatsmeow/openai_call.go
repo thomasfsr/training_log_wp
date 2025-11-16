@@ -113,20 +113,14 @@ func LLMEntryPoint(db *sql.DB, user_input string, user_id uint64) *OverallState 
 		UserID: int(user_id),
 		UserInput: user_input,
 		Messages: []Message{
-			Message{Role: "user", Message: user_input},
-			Message{Role: "assistant", Message: *chat_response_content},
+			Message{Role: "user", Content: user_input},
+			Message{Role: "assistant", Content: *chat_response_content},
 		},
 	}
 }
 
 func LLMQueryData(db *sql.DB, state *OverallState) {
-	tx, err := db.Begin()
-	if err != nil {
-		fmt.Printf("Error in llm query data: %v", err.Error())
-		return
-	}
-	defer tx.Rollback() 
-	user_input := state.UserInput
+		user_input := state.UserInput
 	user_id := state.UserID
 	_ = godotenv.Load()
 	groq_key := os.Getenv("GROQ_API_KEY")
@@ -166,12 +160,19 @@ CRITICAL: Return ONLY the SQL query, no markdown formatting, no code blocks, no 
 	cleanedSQL := cleanSQLResponse(*chat_response_content)
 	fmt.Printf("Generated SQL: %s\n", cleanedSQL)
 
+	tx, err := db.Begin()
+
+	if err != nil {
+		fmt.Printf("Error in llm query data: %v", err.Error())
+		return
+	}
+	defer tx.Rollback() 
 	rows, err := tx.Query(cleanedSQL)
+	defer rows.Close()
 	if err != nil {
 		fmt.Printf("LLM Error: %v", err.Error())
 		return
 	}
-	defer rows.Close()
 	columns, err := rows.Columns()
 	if err != nil {
 		fmt.Printf("LLM Error: %v", err.Error())
@@ -226,7 +227,7 @@ Just give the answer, no need of flags, label or anything else.`),
 		panic(err.Error())
 	}
 	chat_response_content = &chat.Choices[0].Message.Content
-	state.Messages = append(state.Messages, Message(*chat_response_content))
+	state.Messages = append(state.Messages, Message{Role: "assistant", Content: *chat_response_content })
 }
 
 func LLMStructuredOutputSets(state *OverallState, db *sql.DB) {
