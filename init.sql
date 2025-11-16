@@ -21,5 +21,5 @@ CREATE TABLE IF NOT EXISTS workout_sets (
   exercise CHAR(100),
   weight INTEGER,
   reps INTEGER,
-  created_at TIMESTAMP
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
