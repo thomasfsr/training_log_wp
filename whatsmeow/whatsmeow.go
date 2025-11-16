@@ -64,7 +64,7 @@ func eventHandler(client *whatsmeow.Client, db *sql.DB) func(any) {
 
 			tx, err := db.Begin()
 			if err != nil {
-				fmt.Printf(err.Error())
+				fmt.Printf("Error to connect to db: %v", err.Error())
 				return
 			}
 			defer tx.Rollback()
@@ -75,17 +75,16 @@ func eventHandler(client *whatsmeow.Client, db *sql.DB) func(any) {
 					VALUES (?, ?, ?, ?);`,
 					state.UserID, msg.Role, msg.Content, time.Now())
 				if err != nil {
-					fmt.Errorf("failed to insert message: %w", err)
+					fmt.Printf("failed to insert message: %v", err.Error())
 					return
 					}
 				}
+			response := state.Messages[len(state.Messages)-1].Content
 			if message != "" {
-
 				userJID := types.JID{
 					User:   sender.User,
 					Server: sender.Server,
 				}
-
 				_, err := client.SendMessage(
 					context.Background(),
 					userJID,
