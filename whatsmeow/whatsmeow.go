@@ -72,7 +72,7 @@ func eventHandler(client *whatsmeow.Client, db *sql.DB) func(any) {
 			for _, msg := range state.Messages {
 					_, err := tx.Exec(`
 					INSERT INTO messages (user_id, role, message)
-					VALUES (?, ?, ?, ?);`,
+					VALUES (?, ?, ?);`,
 					state.UserID, msg.Role, msg.Content, time.Now())
 				if err != nil {
 					fmt.Printf("failed to insert message: %v", err.Error())
