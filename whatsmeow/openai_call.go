@@ -331,9 +331,9 @@ func InsertOverallState(db *sql.DB, state *OverallState) error {
 	defer tx.Rollback()
 	for _, msg := range state.Messages {
 		_, err := tx.Exec(`
-			INSERT INTO messages (user_id, role, message, created_at)
-			VALUES (?, ?, ?, ?);
-		`, state.UserID, msg.Role, msg.Content, time.Now())
+			INSERT INTO messages (user_id, role, message)
+			VALUES (?, ?, ?);
+		`, state.UserID, msg.Role, msg.Content)
 		if err != nil {
 			return fmt.Errorf("failed to insert message: %w", err)
 		}
