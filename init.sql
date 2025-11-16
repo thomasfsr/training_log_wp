@@ -4,7 +4,7 @@ CREATE TABLE IF NOT EXISTS users (
   last_name CHAR(50), 
   whatsapp INTEGER, 
   active BOOLEAN, 
-  created_at TIMESTAMP
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE TABLE IF NOT EXISTS messages (
