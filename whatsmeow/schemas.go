@@ -22,7 +22,10 @@ type ExerciseSet struct {
 	Weight float32 `json:"weight" jsonschema_description:"weight of the exercise set in kilograms (kg)"`
 }
 
-type Message string
+type Message struct {
+	Role string
+	Message string
+}
 
 type OverallState struct {
 	UserID     int

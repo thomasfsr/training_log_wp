@@ -113,8 +113,9 @@ func LLMEntryPoint(db *sql.DB, user_input string, user_id uint64) *OverallState 
 		UserID: int(user_id),
 		UserInput: user_input,
 		Messages: []Message{
-			Message(user_input),
-			Message(*chat_response_content)},
+			Message{Role: "user", Message: user_input},
+			Message{Role: "assistant", Message: *chat_response_content},
+		},
 	}
 }
 
