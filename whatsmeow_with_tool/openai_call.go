@@ -111,7 +111,7 @@ func LLMMessageClassifier(user_id uint64, user_input string) *OverallState {
 	}
 	chat_response_content := &chat.Choices[0].Message.Content
 	fmt.Println(*chat_response_content)
-  var category string
+  var category Category
 	err = json.Unmarshal([]byte(*chat_response_content), &category)
 	if err != nil {
 		panic(err.Error())
@@ -121,6 +121,7 @@ func LLMMessageClassifier(user_id uint64, user_input string) *OverallState {
 		Messages : []Message{
 			{Role: Role, Content: user_input},
 		},
+		Category: category.category,
 		UserID: user_id,
 		UserInput: user_input,
 	}
