@@ -74,52 +74,6 @@ func ConversationHistory(db *sql.DB, user_id uint64, n_msgs uint8) *[]openai.Cha
 	return &conversationHistory
 }
 
-func MessageClassifier(state *OverallState) {
-	user_input := state.UserInput
-	_ = godotenv.Load()
-	groq_key := os.Getenv("GROQ_API_KEY")
-	client := openai.NewClient(
-		option.WithAPIKey(groq_key),
-		option.WithBaseURL("https://api.groq.com/openai/v1"),
-	)
-	ctx := context.Background()
-	ModelName := "qwen/qwen3-32b"
-
-	schemaParam := openai.ResponseFormatJSONSchemaJSONSchemaParam{
-		Name:        "Classifier",
-		Description: openai.String("Classify the user input to either of three categories: Chat, Query, Insert"),
-		Schema:      ListOfExercisesSchema,
-		Strict:      openai.Bool(true),
-	}
-	chat, err := client.Chat.Completions.New(ctx, openai.ChatCompletionNewParams{
-		Messages: []openai.ChatCompletionMessageParamUnion{
-			openai.SystemMessage(
-				`You are a helpful assistant that works for a strength training app. The user may ask for either: 
-				- Query about previous workout data such as max and min weight or reps or sets and so on.
-				- Insert new data to the database, it can be explicit such as "add "exercise ABC with X sets, Y reps and Z weight" or
-				just pass the information straight forward`),
-			openai.UserMessage(user_input),
-		},
-		ResponseFormat: openai.ChatCompletionNewParamsResponseFormatUnion{
-			OfJSONSchema: &openai.ResponseFormatJSONSchemaParam{JSONSchema: schemaParam},
-		},
-		Model: ModelName,
-	})
-
-	if err != nil {
-		panic(err.Error())
-	}
-	chat_response_content := &chat.Choices[0].Message.Content
-	fmt.Println(*chat_response_content)
-
-	err = json.Unmarshal([]byte(*chat_response_content), &state.ExerciseList)
-	if err != nil {
-		panic(err.Error())
-	}
-	InsertOverallState(db, state)
-	state.Messages = append(state.Messages, Message{Role: "assistant", Content: "workout saved"})
-}
-
 func LLMRouteInput(state *OverallState, db *sql.DB) {
 	if state.Messages[len(state.Messages)-1].Content == "<WO>" {
 		LLMStructuredOutputSets(state, db)
@@ -328,15 +282,6 @@ sets, each set has its own reps and weight.`),
 	}
 	InsertOverallState(db, state)
 	state.Messages = append(state.Messages, Message{Role: "assistant", Content: "workout saved"})
-}
-
-func LLMRouteInput(state *OverallState, db *sql.DB) {
-	if state.Messages[len(state.Messages)-1].Content == "<WO>" {
-		LLMStructuredOutputSets(state, db)
-	} 
-	if state.Messages[len(state.Messages)-1].Content == "<Q>" {
-		LLMQueryData(db, state)
-	}
 }
 
 func createDatabase(dbName, initSQLPath string) (*sql.DB, error) {
