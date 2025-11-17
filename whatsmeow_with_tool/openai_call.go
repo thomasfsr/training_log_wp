@@ -74,7 +74,7 @@ func ConversationHistory(db *sql.DB, user_id uint64, n_msgs uint8) *[]openai.Cha
 	return &conversationHistory
 }
 
-func LLMMessageClassifier(user_input string, user_id uint64) *OverallState {
+func LLMMessageClassifier(user_id uint64, user_input string) *OverallState {
 	_ = godotenv.Load()
 	groq_key := os.Getenv("GROQ_API_KEY")
 	client := openai.NewClient(
@@ -126,7 +126,7 @@ func LLMMessageClassifier(user_input string, user_id uint64) *OverallState {
 	return &state
 }
 
-func LLMRouteInput(state *OverallState, db *sql.DB) {
+func LLMRouteInput(db *sql.DB, state *OverallState) {
 	if state.Category == "insert" {
 		LLMStructuredOutputSets(state, db)
 	} 
@@ -283,7 +283,7 @@ Just give the answer, no need of flags, label or anything else.`),
 	state.Messages = append(state.Messages, Message{Role: "assistant", Content: *chat_response_content })
 }
 
-func LLMStructuredOutputSets(state *OverallState, db *sql.DB) {
+func LLMStructuredOutputSets(db *sql.DB, state *OverallState) {
 	user_input := state.UserInput
 	_ = godotenv.Load()
 	groq_key := os.Getenv("GROQ_API_KEY")
