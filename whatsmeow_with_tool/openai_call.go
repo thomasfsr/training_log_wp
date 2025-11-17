@@ -83,7 +83,7 @@ func LLMMessageClassifier(user_id uint64, user_input string) *OverallState {
 		option.WithBaseURL("https://api.groq.com/openai/v1"),
 	)
 	ctx := context.Background()
-	ModelName := "qwen/qwen3-32b"
+	ModelName := "moonshotai/kimi-k2-instruct-0905"
 
 	schemaParam := openai.ResponseFormatJSONSchemaJSONSchemaParam{
 		Name:        "Classifier",
@@ -169,8 +169,7 @@ func LLMChat(db *sql.DB, state *OverallState) {
 		panic(err.Error())
 	}
 	chat_response_content := &chat.Choices[0].Message.Content
-	state.Messages = append(state.Messages,Message{Role: "assistant", Content: *chat_response_content})
-	return 
+	state.Messages = append(state.Messages,Message{Role: "assistant", Content: *chat_response_content}) 
 }
 
 func LLMQueryData(db *sql.DB, state *OverallState) {
