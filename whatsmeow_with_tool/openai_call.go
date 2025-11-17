@@ -29,6 +29,7 @@ func GenerateSchema[T any]() *jsonschema.Schema {
 
 var ListOfExercisesSchema = GenerateSchema[ListOfExercises]()
 var ClassificationSchema = GenerateSchema[Classification]()
+
 func cleanSQLResponse(sql string) string {
 	cleaned := strings.TrimPrefix(sql, "```sql")
 	cleaned = strings.TrimPrefix(cleaned, "```")
@@ -128,7 +129,7 @@ func LLMMessageClassifier(user_id uint64, user_input string) *OverallState {
 
 func LLMRouteInput(db *sql.DB, state *OverallState) {
 	if state.Category == "insert" {
-		LLMStructuredOutputSets(state, db)
+		LLMStructuredOutputSets(db, state)
 	} 
 	if state.Category == "query" {
 		LLMQueryData(db, state)
