@@ -52,17 +52,18 @@ func LLMMessageClassifier(user_id uint64, user_input string) *OverallState {
 	}
 	chat_response_content := &chat.Choices[0].Message.Content
 	fmt.Println(*chat_response_content)
-  var category Category
-	err = json.Unmarshal([]byte(*chat_response_content), &category)
+  var input_category Category
+	err = json.Unmarshal([]byte(*chat_response_content), &input_category)
 	if err != nil {
 		panic(err.Error())
 	}
+	fmt.Printf("\n cat: %v", input_category.Category)
 	Role := "user"
 	state := OverallState{
 		Messages : []Message{
 			{Role: Role, Content: user_input},
 		},
-		Category: category.category,
+		Category: input_category.Category,
 		UserID: user_id,
 		UserInput: user_input,
 	}
@@ -77,10 +78,10 @@ func LLMChat(db *sql.DB, state *OverallState) {
 		option.WithBaseURL("https://api.groq.com/openai/v1"),
 	)
 	ctx := context.Background()
+	ModelName := "moonshotai/kimi-k2-instruct-0905"
 	const n_past_messages uint8 = 10
 	conversationHistory := ConversationHistory(db, state.UserID, n_past_messages)
 	fmt.Printf("\n\nconversation history: %v\n\n", conversationHistory)
-	ModelName := "llama-3.3-70b-versatile"
 
 	Messages := []openai.ChatCompletionMessageParamUnion{
 			openai.SystemMessage(
@@ -257,8 +258,6 @@ sets, each set has its own reps and weight.`),
 	InsertOverallState(db, state)
 	state.Messages = append(state.Messages, Message{Role: "assistant", Content: "workout saved"})
 }
-
-
 
 func LLMRouteInput(db *sql.DB, state *OverallState) {
 	if state.Category == "insert" {

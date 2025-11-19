@@ -23,7 +23,7 @@ type ExerciseSet struct {
 }
 
 type Category struct { 
-	category string `json:"category" jsonschema:"enum=insert,enum=query,enum=chat" jsonschema_description:"Classification of the user input to: insert, query or chat."`
+	Category string `json:"category" jsonschema:"enum=insert,enum=query,enum=chat" jsonschema_description:"Classification of the user input to: insert, query or chat."`
 }
 
 type Message struct {
@@ -35,7 +35,7 @@ type OverallState struct {
 	UserID     uint64
 	UserInput    string
 	Category string
-	SQL string
+	// SQL string
 	Messages     []Message
 	ExerciseList *ListOfExercises
 }
