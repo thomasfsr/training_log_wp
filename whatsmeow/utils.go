@@ -5,10 +5,12 @@ import (
 	"os"
 	"database/sql"
 	"strings"
+
 	"github.com/invopop/jsonschema"
 	"github.com/openai/openai-go/v2"
-_ "modernc.org/sqlite"
+	_ "modernc.org/sqlite"
 )
+
 func GenerateSchema[T any]() *jsonschema.Schema {
 	reflector := jsonschema.Reflector{
 		AllowAdditionalProperties: false,
