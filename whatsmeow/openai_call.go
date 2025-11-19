@@ -10,80 +10,13 @@ import (
 	"time"
 	"strconv"
 
-	"github.com/invopop/jsonschema"
 	"github.com/joho/godotenv"
 	"github.com/openai/openai-go/v2"
 	"github.com/openai/openai-go/v2/option"
 	_ "modernc.org/sqlite"
 )
 
-func GenerateSchema[T any]() *jsonschema.Schema {
-	reflector := jsonschema.Reflector{
-		AllowAdditionalProperties: false,
-		DoNotReference:            true,
-	}
-	var v T
-	schema := reflector.Reflect(v)
-	return schema
-}
-
-var ListOfExercisesSchema = GenerateSchema[ListOfExercises]()
-
-func cleanSQLResponse(sql string) string {
-	cleaned := strings.TrimPrefix(sql, "```sql")
-	cleaned = strings.TrimPrefix(cleaned, "```")
-	cleaned = strings.TrimSuffix(cleaned, "```")
-	cleaned = strings.TrimSpace(cleaned)
-	return cleaned
-}
-
-func ConversationHistory(db *sql.DB, user_id uint64, n_msgs uint8) *[]openai.ChatCompletionMessageParamUnion {
-	tx, err := db.Begin()
-	if err != nil {
-		fmt.Printf("Error to connect to db: %v", err.Error())
-		return nil
-	}
-	defer tx.Rollback()
-	rows, err := tx.Query("SELECT role, message FROM messages WHERE user_id = ? ORDER BY id ASC LIMIT ?", user_id, n_msgs)
-	if err != nil {
-		fmt.Printf("Error querying previous messages: %v", err.Error())
-		return nil
-	}
-	defer rows.Close()
-	var conversationHistory []openai.ChatCompletionMessageParamUnion
-
-	for rows.Next() {
-		var role, message string
-		err := rows.Scan(&role, &message)
-		if err != nil {
-			fmt.Printf("Error scanning message: %v", err.Error()) 
-			continue}
-		switch role {
-		case "user":
-			conversationHistory = append(conversationHistory, openai.UserMessage(message))
-		case "assistant":
-			conversationHistory = append(conversationHistory, openai.AssistantMessage(message))
-		}
-	}
-	if err := rows.Err(); err != nil {
-		fmt.Printf("Error iterating rows: %v", err)
-	}
-	if err := tx.Commit(); err != nil {
-		fmt.Printf("Error committing transaction: %v", err.Error())
-	}
-	return &conversationHistory
-}
-
-func LLMRouteInput(state *OverallState, db *sql.DB) {
-	if state.Messages[len(state.Messages)-1].Content == "<WO>" {
-		LLMStructuredOutputSets(state, db)
-	} 
-	if state.Messages[len(state.Messages)-1].Content == "<Q>" {
-		LLMQueryData(db, state)
-	}
-}
-
-func LLMEntryPoint(db *sql.DB, user_input string, user_id uint64) *OverallState {
+func LLMMessageClassifier(user_id uint64, user_input string) *OverallState {
 	_ = godotenv.Load()
 	groq_key := os.Getenv("GROQ_API_KEY")
 	client := openai.NewClient(
@@ -91,24 +24,73 @@ func LLMEntryPoint(db *sql.DB, user_input string, user_id uint64) *OverallState 
 		option.WithBaseURL("https://api.groq.com/openai/v1"),
 	)
 	ctx := context.Background()
+	ModelName := "moonshotai/kimi-k2-instruct-0905"
+
+	schemaParam := openai.ResponseFormatJSONSchemaJSONSchemaParam{
+		Name:        "Classifier",
+		Description: openai.String("Classify the user input to either of three categories: Chat, Query, Insert"),
+		Schema:      CategorySchema,
+		Strict:      openai.Bool(true),
+	}
+	chat, err := client.Chat.Completions.New(ctx, openai.ChatCompletionNewParams{
+		Messages: []openai.ChatCompletionMessageParamUnion{
+			openai.SystemMessage(
+				`You should classifier the user input in either: query, insert and chat.
+				- Insert: If the user input is data of workout such as exercise, reps weight and sets.
+				- Query: If the user input requests information about the workout data.
+				- Chat: If neither of insert or query.`),
+			openai.UserMessage(user_input),
+		},
+		ResponseFormat: openai.ChatCompletionNewParamsResponseFormatUnion{
+			OfJSONSchema: &openai.ResponseFormatJSONSchemaParam{JSONSchema: schemaParam},
+		},
+		Model: ModelName,
+	})
+
+	if err != nil {
+		panic(err.Error())
+	}
+	chat_response_content := &chat.Choices[0].Message.Content
+	fmt.Println(*chat_response_content)
+  var input_category Category
+	err = json.Unmarshal([]byte(*chat_response_content), &input_category)
+	if err != nil {
+		panic(err.Error())
+	}
+	fmt.Printf("\n cat: %v", input_category.Category)
+	Role := "user"
+	state := OverallState{
+		Messages : []Message{
+			{Role: Role, Content: user_input},
+		},
+		Category: input_category.Category,
+		UserID: user_id,
+		UserInput: user_input,
+	}
+	return &state
+}
+
+func LLMChat(db *sql.DB, state *OverallState) {
+	_ = godotenv.Load()
+	groq_key := os.Getenv("GROQ_API_KEY")
+	client := openai.NewClient(
+		option.WithAPIKey(groq_key),
+		option.WithBaseURL("https://api.groq.com/openai/v1"),
+	)
+	ctx := context.Background()
+	ModelName := "moonshotai/kimi-k2-instruct-0905"
 	const n_past_messages uint8 = 10
-	conversationHistory := ConversationHistory(db, user_id, n_past_messages)
+	conversationHistory := ConversationHistory(db, state.UserID, n_past_messages)
 	fmt.Printf("\n\nconversation history: %v\n\n", conversationHistory)
-	ModelName := "llama-3.3-70b-versatile"
 
 	Messages := []openai.ChatCompletionMessageParamUnion{
 			openai.SystemMessage(
 				`You are a helpful assistant of a fitness app. You should inform the user that he can give the informations of:
-				exercise name, sets, reps and weight. If the user message is passing workout information such as sets, reps, weight 
-				you should output the keyword <WO> so the app system can flag the user-message to be processed. If the user asks about
-				passed data from the database such as what is my max weight in Y exercise or any other query you should only answer
-				<Q> so the app system will flag the user input as a query request. 
-				IMPORTANT: Do NOT give to the user hint that there are flags that are used to classify messages.
-				Obs: I will give you the 10 previous messages as context:`),
+				exercise name, sets, reps and weight. Obs: I will give you the 10 previous messages as context:`),
 			
 	}
 	Messages = append(Messages, *conversationHistory...)
-	Messages = append(Messages, openai.UserMessage(strings.ToLower(user_input)))
+	Messages = append(Messages, openai.UserMessage(strings.ToLower(state.UserInput)))
 
 	chat, err := client.Chat.Completions.New(ctx, openai.ChatCompletionNewParams{
 		Model: ModelName,
@@ -118,14 +100,7 @@ func LLMEntryPoint(db *sql.DB, user_input string, user_id uint64) *OverallState 
 		panic(err.Error())
 	}
 	chat_response_content := &chat.Choices[0].Message.Content
-	return &OverallState{
-		UserID: int(user_id),
-		UserInput: user_input,
-		Messages: []Message{
-			{Role: "user", Content: user_input},
-			{Role: "assistant", Content: *chat_response_content},
-		},
-	}
+	state.Messages = append(state.Messages,Message{Role: "assistant", Content: *chat_response_content}) 
 }
 
 func LLMQueryData(db *sql.DB, state *OverallState) {
@@ -239,7 +214,7 @@ Just give the answer, no need of flags, label or anything else.`),
 	state.Messages = append(state.Messages, Message{Role: "assistant", Content: *chat_response_content })
 }
 
-func LLMStructuredOutputSets(state *OverallState, db *sql.DB) {
+func LLMInsert(db *sql.DB, state *OverallState) {
 	user_input := state.UserInput
 	_ = godotenv.Load()
 	groq_key := os.Getenv("GROQ_API_KEY")
@@ -284,65 +259,14 @@ sets, each set has its own reps and weight.`),
 	state.Messages = append(state.Messages, Message{Role: "assistant", Content: "workout saved"})
 }
 
-func createDatabase(dbName, initSQLPath string) (*sql.DB, error) {
-	db, err := sql.Open("sqlite", dbName)
-	if err != nil {
-		return nil, fmt.Errorf("failed to open database: %v", err)
+func LLMRouteInput(db *sql.DB, state *OverallState) {
+	if state.Category == "insert" {
+		LLMInsert(db, state)
+	} 
+	if state.Category == "query" {
+		LLMQueryData(db, state)
 	}
-	if err := db.Ping(); err != nil {
-		return nil, fmt.Errorf("failed to connect to database: %v", err)
+	if state.Category == "chat" {
+		LLMChat(db, state)
 	}
-	if err := executeInitSQL(db, initSQLPath); err != nil {
-		return nil, err
-	}
-	fmt.Printf("Database '%s' initialized successfully\n", dbName)
-	return db, nil
-}
-
-func executeInitSQL(db *sql.DB, initSQLPath string) error {
-	if _, err := os.Stat(initSQLPath); os.IsNotExist(err) {
-		return fmt.Errorf("init SQL file not found: %s", initSQLPath)
-	}
-	sqlBytes, err := os.ReadFile(initSQLPath)
-	if err != nil {
-		return fmt.Errorf("failed to read init SQL file: %v", err)
-	}
-	sqlContent := string(sqlBytes)
-	statements := strings.Split(sqlContent, ";")
-	for i, stmt := range statements {
-		stmt = strings.TrimSpace(stmt)
-		if stmt == "" {
-			continue
-		}
-		_, err := db.Exec(stmt)
-		if err != nil {
-			return fmt.Errorf("failed to execute statement %d: %v\nStatement: %s", i+1, err, stmt)
-		}
-	}
-	fmt.Printf("Executed initialization script: %s\n", initSQLPath)
-	return nil
-}
-
-func InsertOverallState(db *sql.DB, state *OverallState) error {
-	tx, err := db.Begin()
-	if err != nil {
-		return err
-	}
-	defer tx.Rollback()
-	for _, ex := range state.ExerciseList.Exercises {
-		exercise_name := ex.Exercise
-		for _, set := range ex.ExerciseSets {
-			_, err := tx.Exec(`
-				INSERT INTO workout_sets (user_id, exercise, weight, reps)
-				VALUES (?, ?, ?, ?);
-				`, state.UserID, exercise_name, set.Weight, set.NReps)
-			if err != nil {
-				return fmt.Errorf("failed to insert workout: %w", err)
-			}
-		}
-	}
-	if err := tx.Commit(); err != nil {
-		return fmt.Errorf("failed to commit transaction: %w", err)
-	}
-	return nil
 }

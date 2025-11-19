@@ -59,8 +59,8 @@ func eventHandler(client *whatsmeow.Client, db *sql.DB) func(any) {
 			fmt.Println("Received a message!\n", message)
 			fmt.Println("Device is: \n", device)
 
-			state := LLMEntryPoint(db, message, deviceID)
-			LLMRouteInput(state, db)
+			state := LLMMessageClassifier(deviceID, message)
+			LLMRouteInput(db, state)
 
 			tx, err := db.Begin()
 			if err != nil {

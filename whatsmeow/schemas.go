@@ -22,14 +22,20 @@ type ExerciseSet struct {
 	Weight float32 `json:"weight" jsonschema_description:"weight of the exercise set in kilograms (kg)"`
 }
 
+type Category struct { 
+	Category string `json:"category" jsonschema:"enum=insert,enum=query,enum=chat" jsonschema_description:"Classification of the user input to: insert, query or chat."`
+}
+
 type Message struct {
 	Role string
 	Content string
 }
 
 type OverallState struct {
-	UserID     int
+	UserID     uint64
 	UserInput    string
+	Category string
+	// SQL string
 	Messages     []Message
 	ExerciseList *ListOfExercises
 }
