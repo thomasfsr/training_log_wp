@@ -1,4 +1,4 @@
-package main
+package llm
 type extractTask struct {
 	LabelTask       string `json:"label_task" jsonschema:"enum=query_data,enum=update,enum=chat" jsonschema_description:"The label of the task if it is quering database, updating the database or neither just chatting."`
 	TaskDescription string `json:"task_description" jsonschema_description:"The task with the main informations to execute the user request"`
