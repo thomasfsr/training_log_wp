@@ -30,5 +30,4 @@ type Message struct {
 	Role string `gorm:"type:ENUM('user','assistant')"`
 	Message string `gorm:"type:char(100)"`
 	CreatedAt time.Time
-	 
 }
