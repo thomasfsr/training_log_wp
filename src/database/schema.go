@@ -5,7 +5,7 @@ import (
 ) 
 
 type User struct {
-	ID uint64 `gorm:"autoIncrement"`
+	ID uint32 `gorm:"autoIncrement"`
 	FirstName string `gorm:"type:char(20)"`
 	LastName string `gorm:"type:char(50)"`
 	Whatsapp uint64 
@@ -16,20 +16,19 @@ type User struct {
 
 type WorkoutSet struct {
 	ID uint64 `gorm:"autoIncrement"`
-	UserId string `gorm:"type:char(20)"`
-	Name string `gorm:"type:char(50)"`
-	Whatsapp uint64 
-	Active bool
+	UserId uint32
+	Exercise string `gorm:"type:char(100)"`
+	Weight uint16 
+	Reps uint8
 	CreatedAt time.Time
 	UpdatedAt time.Time
 }
 
 type Message struct {
 	ID uint64 `gorm:"autoIncrement"`
-	UserId string `gorm:"type:char(20)"`
-	LastName string `gorm:"type:char(50)"`
-	Whatsapp uint64 
-	Active bool
+	UserId uint32
+	Role string `gorm:"type:ENUM('user','assistant')"`
+	Message string `gorm:"type:char(100)"`
 	CreatedAt time.Time
 	 
 }
