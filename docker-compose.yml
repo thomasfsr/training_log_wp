@@ -1,15 +1,15 @@
 name: llmgo
 
 services:
-  redis-workout:
-    image: redis:8.2.1-alpine3.22
-    container_name: redis
-    ports:
-      - "6379:6379"
-    volumes:
-      - redis-data:/data
-    command: ["redis-server", "--appendonly", "yes"]
-
+  # redis-workout:
+  #   image: redis:8.2.1-alpine3.22
+  #   container_name: redis
+  #   ports:
+  #     - "6379:6379"
+  #   volumes:
+  #     - redis-data:/data
+  #   command: ["redis-server", "--appendonly", "yes"]
+  #
   
   postgres-workout:
     image: postgres:18.0-alpine3.22
